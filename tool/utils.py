@@ -108,7 +108,7 @@ def plot_boxes_cv2(img, boxes, class_names=None, color=None):
         ratio = ratio - i
         r = (1 - ratio) * colors[i][c] + ratio * colors[j][c]
         return int(r * 255)
-
+    found = {}
     width = img.shape[1]
     height = img.shape[0]
     for i in range(len(boxes)):
@@ -136,8 +136,14 @@ def plot_boxes_cv2(img, boxes, class_names=None, color=None):
             textname = class_names[cls_id] + ' ' + str(round(box[5],2))
             #img = cv2.putText(img, class_names[cls_id], (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1.2, rgb, 2)
             img = cv2.putText(img, textname, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1.2, rgb, 2)
+
+            if not class_names[cls_id] in found:
+                found[class_names[cls_id]] = 1
+            else:
+                found[class_names[cls_id]] += 1
+
         img = cv2.rectangle(img, (x1, y1), (x2, y2), rgb, 1)
-    return img
+    return img, found
 
 
 def read_truths(lab_path):

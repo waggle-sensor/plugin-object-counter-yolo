@@ -7,12 +7,19 @@ import argparse
 import cv2
 import glob
 
+import logging
 import waggle.plugin as plugin
 from waggle.data.vision import Camera
 
 TOPIC_TEMPLATE = "env.count.yolo"
 
 def detect_cv2(args):
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='%(asctime)s %(message)s',
+        datefmt='%Y/%m/%d %H:%M:%S')
+
+
     m = Darknet(args.cfgfile)
     m.load_weights(args.weightfile)
     print('Loading weights Done!')
@@ -29,10 +36,11 @@ def detect_cv2(args):
         logging.info("sampling enabled -- occurs every %sth inferencing", args.sampling_interval)
         sampling_countdown = args.sampling_interval
 
-
+    #files = [args.imgfile]
     camera = Camera(args.stream)
     while True:
         for sample in camera.stream():
+        #for i in files:
 
             do_sampling = False
             if sampling_countdown > 0:
@@ -48,6 +56,7 @@ def detect_cv2(args):
             timestamp = sample.timestamp
 
             #image = cv2.imread(i)
+
             sized = cv2.resize(image, (m.width, m.height))
             sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
 
@@ -55,8 +64,17 @@ def detect_cv2(args):
             boxes = do_detect(m, sized, args.confidence_level, 0.6, use_cuda)
             finish = time.time()
 
-            print(len(boxes))
-            image = plot_boxes_cv2(image, boxes[0], class_names=class_names)
+            image, found = plot_boxes_cv2(image, boxes[0], class_names=class_names)
+
+
+            detection_stats = 'found objects: '
+            for object_found, count in found.items():
+                detection_stats += f'{object_found} [{count}] '
+                plugin.publish(f'{TOPIC_TEMPLATE}.{object_found}', count, timestamp=timestamp)
+                #print(f'{TOPIC_TEMPLATE}.{object_found}', count)
+            logging.info(detection_stats)
+
+
 
 
             if do_sampling:
