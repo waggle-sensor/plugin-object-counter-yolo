@@ -6,6 +6,7 @@ import argparse
 
 import cv2
 import glob
+import time
 
 import logging
 import waggle.plugin as plugin
@@ -56,6 +57,7 @@ def detect_cv2(args):
             timestamp = sample.timestamp
 
             #image = cv2.imread(i)
+            #timestamp = time.time()
 
             sized = cv2.resize(image, (m.width, m.height))
             sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
@@ -71,13 +73,14 @@ def detect_cv2(args):
             for object_found, count in found.items():
                 detection_stats += f'{object_found} [{count}] '
                 plugin.publish(f'{TOPIC_TEMPLATE}.{object_found}', count, timestamp=timestamp)
-                #print(f'{TOPIC_TEMPLATE}.{object_found}', count)
+                print(f'{TOPIC_TEMPLATE}.{object_found}', count)
             logging.info(detection_stats)
 
 
 
 
-            if do_sampling:
+
+            if do_sampling and found != {}:
                 sample.data = image
                 sample.save(f'sample_{timestamp}.jpg')
                 plugin.upload_file(f'sample_{timestamp}.jpg')
@@ -88,8 +91,11 @@ def detect_cv2(args):
 
 
 
+            if args.continuous == False:
+                exit(0)
+            if args.interval > 0:
+                time.sleep(args.interval)
 
-            exit(0)
 
 def get_args():
     parser = argparse.ArgumentParser('Test your image or video by trained model.')
@@ -98,7 +104,7 @@ def get_args():
     parser.add_argument('-weightfile', type=str,
                         default='yolov4.weights',
                         help='path of trained model.', dest='weightfile')
-    parser.add_argument('-imgfile', type=str, required=True,
+    parser.add_argument('-imgfile', type=str,
                         help='path of your image file.', dest='imgfile')
 
 
@@ -118,6 +124,15 @@ def get_args():
         '-sampling-interval', dest='sampling_interval',
         action='store', default=-1, type=int,
         help='Sampling interval between inferencing')
+    parser.add_argument(
+        '-debug', dest='debug',
+        action='store_true', default=False,
+        help='Debug flag')
+    parser.add_argument(
+        '-continuous', dest='continuous',
+        action='store_true', default=False,
+        help='Flag to run this plugin forever')
+
     args = parser.parse_args()
     return args
 

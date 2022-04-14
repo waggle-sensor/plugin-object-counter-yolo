@@ -3,8 +3,7 @@ FROM waggle/plugin-base:1.1.1-ml
 COPY requirements.txt app.py /app/
 COPY detection/ /app/detection
 COPY tool/ /app/tool
-COPY yolov4.weight yol
-ov4.cfg /app/
+COPY yolov4.weights yolov4.cfg /app/
 
 
 RUN pip3 install --upgrade pip
