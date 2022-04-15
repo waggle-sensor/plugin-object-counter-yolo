@@ -9,7 +9,7 @@ import glob
 import time
 
 import logging
-import waggle.plugin as plugin
+import waggle.plugin as Plugin
 from waggle.data.vision import Camera
 
 TOPIC_TEMPLATE = "env.count.yolo"
@@ -39,6 +39,7 @@ def detect_cv2(args):
 
     #files = [args.imgfile]
     camera = Camera(args.stream)
+    pre = {}
     while True:
         for sample in camera.stream():
         #for i in files:
@@ -70,21 +71,24 @@ def detect_cv2(args):
 
 
             detection_stats = 'found objects: '
-            for object_found, count in found.items():
-                detection_stats += f'{object_found} [{count}] '
-                plugin.publish(f'{TOPIC_TEMPLATE}.{object_found}', count, timestamp=timestamp)
-                print(f'{TOPIC_TEMPLATE}.{object_found}', count)
-            logging.info(detection_stats)
+            with Plugin() as plugin:
+                for object_found, count in found.items():
+                    detection_stats += f'{object_found} [{count}] '
+                    plugin.publish(f'{TOPIC_TEMPLATE}.{object_found}', count, timestamp=timestamp)
+                    print(f'{TOPIC_TEMPLATE}.{object_found}', count)
+                logging.info(detection_stats)
 
 
 
 
 
-            if do_sampling and found != {}:
-                sample.data = image
-                sample.save(f'sample_{timestamp}.jpg')
-                plugin.upload_file(f'sample_{timestamp}.jpg')
-                logging.info("uploaded sample")
+            if do_sampling and found != {} and found != pre:
+                with Plugin() as plugin:
+                    sample.data = image
+                    sample.save(f'sample_{timestamp}.jpg')
+                    plugin.upload_file(f'sample_{timestamp}.jpg')
+                    logging.info("uploaded sample")
+            pre = found
 
             if args.interval > 0:
                 time.sleep(args.interval)
