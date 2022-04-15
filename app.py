@@ -40,38 +40,38 @@ def detect_cv2(args):
     #files = [args.imgfile]
     camera = Camera(args.stream)
     pre = {}
-    while True:
-        for sample in camera.stream():
-        #for i in files:
+    with Plugin() as plugin:
+        while True:
+            for sample in camera.stream():
+            #for i in files:
 
-            do_sampling = False
-            if sampling_countdown > 0:
-                sampling_countdown -= 1
-            elif sampling_countdown == 0:
-                do_sampling = True
-                sampling_countdown = args.sampling_interval
-
-
-            image = sample.data
-            height = image.shape[0]
-            width = image.shape[1]
-            timestamp = sample.timestamp
-
-            #image = cv2.imread(i)
-            #timestamp = time.time()
-
-            sized = cv2.resize(image, (m.width, m.height))
-            sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
-
-            start = time.time()
-            boxes = do_detect(m, sized, args.confidence_level, 0.6, use_cuda)
-            finish = time.time()
-
-            image, found = plot_boxes_cv2(image, boxes[0], class_names=class_names)
+                do_sampling = False
+                if sampling_countdown > 0:
+                    sampling_countdown -= 1
+                elif sampling_countdown == 0:
+                    do_sampling = True
+                    sampling_countdown = args.sampling_interval
 
 
-            detection_stats = 'found objects: '
-            with Plugin() as plugin:
+                image = sample.data
+                height = image.shape[0]
+                width = image.shape[1]
+                timestamp = sample.timestamp
+
+                #image = cv2.imread(i)
+                #timestamp = time.time()
+
+                sized = cv2.resize(image, (m.width, m.height))
+                sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
+
+                start = time.time()
+                boxes = do_detect(m, sized, args.confidence_level, 0.6, use_cuda)
+                finish = time.time()
+
+                image, found = plot_boxes_cv2(image, boxes[0], class_names=class_names)
+
+
+                detection_stats = 'found objects: '
                 for object_found, count in found.items():
                     detection_stats += f'{object_found} [{count}] '
                     plugin.publish(f'{TOPIC_TEMPLATE}.{object_found}', count, timestamp=timestamp)
@@ -82,23 +82,22 @@ def detect_cv2(args):
 
 
 
-            if do_sampling and found != {} and found != pre:
-                with Plugin() as plugin:
+                if do_sampling and found != {} and found != pre:
                     sample.data = image
                     sample.save(f'sample_{timestamp}.jpg')
                     plugin.upload_file(f'sample_{timestamp}.jpg')
                     logging.info("uploaded sample")
-            pre = found
+                pre = found
 
-            if args.interval > 0:
-                time.sleep(args.interval)
+                if args.interval > 0:
+                    time.sleep(args.interval)
 
 
 
-            if args.continuous == False:
-                exit(0)
-            if args.interval > 0:
-                time.sleep(args.interval)
+                if args.continuous == False:
+                    exit(0)
+                if args.interval > 0:
+                    time.sleep(args.interval)
 
 
 def get_args():
