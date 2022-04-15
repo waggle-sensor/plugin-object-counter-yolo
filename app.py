@@ -9,7 +9,7 @@ import glob
 import time
 
 import logging
-import waggle.plugin as Plugin
+from waggle.plugin import Plugin
 from waggle.data.vision import Camera
 
 TOPIC_TEMPLATE = "env.count.yolo"
