@@ -32,18 +32,26 @@ def detect_cv2(args):
     namesfile = 'detection/coco.names'
     class_names = load_class_names(namesfile)
 
+
+    if args.object != None:
+        target_objects = args.object
+    else:
+        target_objects = class_names
+
+
     sampling_countdown = -1
     if args.sampling_interval >= 0:
         logging.info("sampling enabled -- occurs every %sth inferencing", args.sampling_interval)
         sampling_countdown = args.sampling_interval
 
-    #files = [args.imgfile]
-    camera = Camera(args.stream)
-    pre = {}
+    files = [args.imgfile]
+    video = cv2.VideoCapture(files[0])
+    #camera = Camera(args.stream)
+    c = 0
     with Plugin() as plugin:
         while True:
-            for sample in camera.stream():
-            #for i in files:
+            #for sample in camera.stream():
+            for i in files:
 
                 do_sampling = False
                 if sampling_countdown > 0:
@@ -53,13 +61,13 @@ def detect_cv2(args):
                     sampling_countdown = args.sampling_interval
 
 
-                image = sample.data
-                height = image.shape[0]
-                width = image.shape[1]
-                timestamp = sample.timestamp
+                #image = sample.data
+                #height = image.shape[0]
+                #width = image.shape[1]
+                #timestamp = sample.timestamp
 
                 #image = cv2.imread(i)
-                #timestamp = time.time()
+                ret, image = video.read()
 
                 sized = cv2.resize(image, (m.width, m.height))
                 sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
@@ -71,23 +79,27 @@ def detect_cv2(args):
                 image, found = plot_boxes_cv2(image, boxes[0], class_names=class_names)
 
 
+                publish_flag = False
                 detection_stats = 'found objects: '
                 for object_found, count in found.items():
-                    detection_stats += f'{object_found} [{count}] '
-                    plugin.publish(f'{TOPIC_TEMPLATE}.{object_found}', count, timestamp=timestamp)
-                    print(f'{TOPIC_TEMPLATE}.{object_found}', count)
+                    if object_found in target_objects:
+                        publish_flag = True
+                        detection_stats += f'{object_found} [{count}] '
+                        #plugin.publish(f'{TOPIC_TEMPLATE}.{object_found}', count, timestamp=timestamp)
+                        print(f'{TOPIC_TEMPLATE}.{object_found}', count)
                 logging.info(detection_stats)
 
 
+                c += 1
+                name = str(c) + '.jpg'
+                cv2.imwrite(name, image)
 
 
-
-                if do_sampling and found != {} and found != pre:
+                if do_sampling and publish_flag == True:
                     sample.data = image
                     sample.save(f'sample_{timestamp}.jpg')
                     plugin.upload_file(f'sample_{timestamp}.jpg')
                     logging.info("uploaded sample")
-                pre = found
 
                 if args.interval > 0:
                     time.sleep(args.interval)
@@ -110,14 +122,17 @@ def get_args():
     parser.add_argument('-imgfile', type=str,
                         help='path of your image file.', dest='imgfile')
 
-
+    parser.add_argument(
+        '-object', dest='object',
+        action='append',
+        help='Object name to count')
     parser.add_argument(
         '-stream', dest='stream',
         action='store', default="camera",
         help='ID or name of a stream, e.g. sample')
     parser.add_argument(
         '-confidence-level', dest='confidence_level',
-        action='store', default=0.4,
+        action='store', default=0.8,
         help='Confidence level [0. - 1.] to filter out result')
     parser.add_argument(
         '-interval', dest='interval',
